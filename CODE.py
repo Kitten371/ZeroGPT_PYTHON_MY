@@ -1,9 +1,20 @@
 import sys
 import time
-import random
+import torch
+from transformers import pipeline
 from colorama import Fore, Style, init
 
 init()
+
+generator = pipeline(
+    "text-generation",
+    model="gpt2",
+    device=0 if torch.cuda.is_available() else -1,
+)
+
+def torch_choice(items):
+    index = int(torch.randint(0, len(items), (1,)).item())
+    return items[index]
 
 def typing_effect(text, speed=0.05):
     for char2 in text:
@@ -25,6 +36,17 @@ def blink_text(text, count=3, interval=0.32):
 
     sys.stdout.write("\r" + text)  # Оставляем финальный текст видим
     sys.stdout.flush()
+
+def generate_transformer_reply(prompt, max_new_tokens=40):
+    result = generator(
+        prompt,
+        max_new_tokens=max_new_tokens,
+        do_sample=True,
+        top_p=0.95,
+        temperature=0.9,
+        num_return_sequences=1,
+    )
+    return result[0]["generated_text"].strip()
 
 
 
@@ -79,7 +101,7 @@ pamat = []
 smile = ["^^ |" , ":) |" , ":0 |" , "(◕‿◕) |", "✯ |"]
 
 # --------------------------------
-print(Style.BRIGHT + Fore.BLACK + random.choice(smile) , random.choice(hello))
+print(Style.BRIGHT + Fore.BLACK + torch_choice(smile) , torch_choice(hello))
 print(Style.NORMAL +f"|------------------Чат {chat}-----------------------|" )
 # ----------------------------
 
@@ -103,6 +125,10 @@ while True:
         time.sleep(time_wait)
         user_vopros = user
         typing_effect(f">>>>> Я еще этого не знаю.Но вы можете обучить меня! Я помню контекст: {user_vopros} .Остается написать ответ!")
+        blink_text(" ✦Generative...✦ ")
+        print()
+        transformer_reply = generate_transformer_reply(user_vopros)
+        typing_effect(f">>>>> Transformer: {transformer_reply}")
         user_otvet = input()
         print(" ✎︎ [ZeroGPT хочет обновить базу данных.Являются ли ваши данные обучения -- не нарушающими нашу политику?] (да или нет)")
         user_podtv = input()
@@ -143,7 +169,7 @@ while True:
    elif user == '/новый чат':
         chat += 1
         print()
-        print(Style.BRIGHT + Fore.BLACK + random.choice(smile), random.choice(hello))
+        print(Style.BRIGHT + Fore.BLACK + torch_choice(smile), torch_choice(hello))
         print(Style.NORMAL + f"|------------------Чат {chat}-----------------------|")
 # юзер = вопрос (от юзера)
 # ответАИ = ответИИ
@@ -157,5 +183,3 @@ while True:
 
 # юзер Привет
 # бот Приветик как дела?
-
-
