@@ -1,0 +1,118 @@
+import os
+import sys
+import time
+import random
+from typing import List, Dict
+
+from colorama import Fore, Style, init
+from mistralai import Mistral
+
+init(autoreset=True)
+
+# -------------------- эффекты --------------------
+
+def typing_effect(text: str, speed: float = 0.04):
+    for ch in text:
+        sys.stdout.write(ch)
+        sys.stdout.flush()
+        time.sleep(speed)
+    print()
+
+def blink_text(text: str, count: int = 3, interval: float = 0.32):
+    for _ in range(count):
+        sys.stdout.write("\r" + text)
+        sys.stdout.flush()
+        time.sleep(interval)
+        sys.stdout.write("\r" + (" " * len(text)))
+        sys.stdout.flush()
+        time.sleep(interval)
+    sys.stdout.write("\r" + text)
+    sys.stdout.flush()
+
+# -------------------- настройки --------------------
+
+time_wait = 0.5
+chat = 1
+
+hello = [
+    "Что у тебя сегодня на уме?",
+    "В чем сегодня твой фокус?",
+    "О чём поговорим?",
+    "Кидай мысль, разберём.",
+    "Я здесь, говори.",
+    "Что хочешь понять или сделать?",
+]
+
+smile = ["^^ |", ":) |", "(◕‿◕) |", "✯ |", "> |"]
+
+SYSTEM_PROMPT = (
+    "Ты умный, спокойный, дружелюбный ассистент. "
+    "Отвечай по делу, без воды, но понятно. "
+    "Если вопрос сложный — объясняй простыми словами."
+)
+
+# -------------------- печать заголовка --------------------
+
+def print_header():
+    print(Style.BRIGHT + Fore.BLACK + random.choice(smile), random.choice(hello))
+    print(Style.NORMAL + f"|------------------ Чат {chat} ------------------|")
+
+# -------------------- main --------------------
+
+def main():
+    api_key = os.getenv("MISTRAL_API_KEY")
+    if not api_key:
+        print(Fore.RED + "❌ Нет MISTRAL_API_KEY в окружении" + Style.RESET_ALL)
+        return
+
+    client = Mistral(api_key=api_key)
+
+    messages: List[Dict[str, str]] = [
+        {"role": "system", "content": SYSTEM_PROMPT}
+    ]
+
+    global chat
+    print_header()
+
+    while True:
+        user = input().strip()
+
+        if not user:
+            continue
+
+        cmd = user.lower()
+
+        if cmd in ("/exit", "/выход", "/quit"):
+            print(Fore.YELLOW + "Выход." + Style.RESET_ALL)
+            break
+
+        if cmd == "/новый чат":
+            chat += 1
+            messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+            print()
+            print_header()
+            continue
+
+        # добавляем сообщение пользователя
+        messages.append({"role": "user", "content": user})
+
+        blink_text(" ✦ Generating... ✦ ")
+        print()
+        time.sleep(time_wait)
+
+        try:
+            res = client.chat.complete(
+                model="mistral-small-latest",
+                messages=messages
+            )
+
+            answer = res.choices[0].message.content
+            messages.append({"role": "assistant", "content": answer})
+
+            typing_effect(">>>>> " + answer)
+
+        except Exception as e:
+            print(Fore.RED + f"Ошибка: {e}" + Style.RESET_ALL)
+
+if __name__ == "__main__":
+    main()
